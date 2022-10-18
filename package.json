@@ -1,0 +1,23 @@
+{
+  "name": "osu-rapid-host",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bancho.js": "^0.9.7",
+    "lodash": "^4.17.21",
+    "node-fetch": "^2.6.7",
+    "nodesu": "^0.7.3",
+    "zustand": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.0",
+    "@types/node-fetch": "^2.6.2",
+    "prettier": "^2.7.1"
+  }
+}
