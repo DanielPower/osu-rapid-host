@@ -1,4 +1,7 @@
-import type { BanchoMessage, BanchoMultiplayerChannel } from "bancho.js";
+import type {
+  BanchoMessage,
+  BanchoMultiplayerChannel,
+} from "bancho.js";
 import { client } from "./global";
 import {
   addBeatmap,
@@ -7,6 +10,7 @@ import {
   splitWhitespace,
 } from "./utilities";
 import { ok } from "assert";
+import store from "./store";
 
 type MessageHandler<V> = {
   trigger: (message: BanchoMessage) => [true, V] | [false, null];
@@ -72,7 +76,28 @@ export const hostMessage: MessageHandler<null> = {
     await message.user.sendMessage("Taking control!");
     const channel = client.getChannel(channelName) as BanchoMultiplayerChannel;
     await channel.join();
-    await channel.lobby.updateSettings();
     await manageLobby(channel.lobby);
   },
 };
+
+export const difficultyMessage = (uuid: string): MessageHandler<null> => ({
+  trigger: (message) => {
+    if (message.message.indexOf("!stars") === 0) {
+      return [true, null];
+    }
+    return [false, null];
+  },
+  effect: async (message) => {
+    let minStars, maxStars;
+    try {
+      const components = splitWhitespace(message.message);
+      minStars = parseFloat(components[1]);
+      maxStars = parseFloat(components[2]);
+    } catch {
+      await message.user.sendMessage("Invalid arguments for !stars.");
+      await message.user.sendMessage("Usage: !stars <min_stars> <max_stars>");
+      await message.user.sendMessage("Example: !stars 5 6.5");
+    }
+    store.getState().updateLobbyStarRating(uuid, minStars, maxStars);
+  },
+});

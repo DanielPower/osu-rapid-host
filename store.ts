@@ -19,6 +19,7 @@ type Store = {
   lobbies: { [key: string]: Lobby };
   createLobby: (uuid: string, lobby: Lobby) => void;
   updateLobbyWinCondition: (uuid: string, winCondition: WinCondition) => void;
+  updateLobbyStarRating: (uuid: string, minStars: number, maxStars: number) => void;
 };
 
 const store = create<Store>()(
@@ -37,6 +38,12 @@ const store = create<Store>()(
           draft.lobbies[uuid].winCondition = winCondition;
         })
       ),
+    updateLobbyStarRating: (uuid, minStars, maxStars) => set(
+        produce((draft) => {
+          draft.lobbies[uuid].minStars = minStars;
+          draft.lobbies[uuid].maxStars = maxStars;
+        })
+    )
   }))
 );
 

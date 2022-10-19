@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bancho.js": "^0.9.7",
+    "bancho.js": "^0.10.0-rc.6",
     "immer": "^9.0.15",
     "lodash": "^4.17.21",
     "node-fetch": "^2.6.7",

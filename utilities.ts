@@ -6,6 +6,8 @@ import type { Beatmap } from "nodesu";
 import { WinCondition } from "./types";
 import { writeFileSync } from "fs";
 import { randomUUID } from "crypto";
+import { difficultyMessage, echoMessage } from "./message_handlers";
+import { Mode } from "nodesu";
 
 export const splitWhitespace = (str: string) => str.split(/\s+/);
 
@@ -51,10 +53,12 @@ export const setRandomBeatmap = async (uuid: string) => {
   );
   const beatmap =
     lobbyBeatmaps[Math.floor(Math.random() * lobbyBeatmaps.length)];
-  console.log(lobbyBeatmaps);
-  console.log(beatmap);
-  await lobby.channel.sendMessage(`Selecting beatmap [${beatmap.title}]`);
-  await lobby.setMap(beatmap.id, "osu");
+  await lobby.channel.sendMessage(
+    `Now playing [https://osu.ppy.sh/beatmapsets/${beatmap.setId}#${
+      beatmap.mode
+    }/${beatmap.id} ${beatmap.title}] ${beatmap.difficultyRating.toFixed(2)}*`
+  );
+  await lobby.setMap(beatmap.id, Mode.osu);
 };
 
 export const queueMap = async (uuid: string) => {
@@ -70,10 +74,11 @@ export const queueMap = async (uuid: string) => {
 };
 
 export const manageLobby = async (lobby: BanchoLobby): Promise<() => void> => {
+  await lobby.updateSettings();
   const uuid = randomUUID();
   lobbies[uuid] = lobby;
   store.getState().createLobby(uuid, {
-    slots: lobby.slots,
+    slots: [],
     winCondition: lobby.winCondition,
     minStars: 3,
     maxStars: 5,
@@ -84,9 +89,12 @@ export const manageLobby = async (lobby: BanchoLobby): Promise<() => void> => {
   const matchAborted = () => queueMap(uuid);
   const allPlayersReady = () => lobby.startMatch();
   const channelMessage = (message: BanchoMessage) => {
-    console.log(`message: ${message.message}`);
-    if (message.message.indexOf("!echo") === 0) {
-      message.user.sendMessage(message.message.slice(6));
+    for (const messageHandler of [difficultyMessage(uuid), echoMessage]) {
+      const [isHandled, value] = messageHandler.trigger(message);
+      if (isHandled) {
+        (messageHandler as any).effect(message, value);
+        break;
+      }
     }
   };
   const winCondition = (winCondition: WinCondition) => {
@@ -119,14 +127,31 @@ export const manageLobby = async (lobby: BanchoLobby): Promise<() => void> => {
     { equalityFn: shallow, fireImmediately: true }
   );
 
+  const unsubscribeStars = store.subscribe(
+    (state) => [state.lobbies[uuid].minStars, state.lobbies[uuid].maxStars],
+    ([minStars, maxStars]) => {
+      const beatmap = store
+        .getState()
+        .beatmaps.find((beatmap) => beatmap.id === lobby.beatmapId);
+      if (
+        minStars > beatmap.difficultyRating ||
+        maxStars < beatmap.difficultyRating
+      ) {
+        setRandomBeatmap(uuid);
+      }
+    }
+  );
+
   await lobby.clearHost();
   await queueMap(uuid);
 
-  return () => {
-    lobby.off("matchFinished", matchFinished);
-    lobby.off("matchAborted", () => matchAborted);
-    lobby.off("allPlayersReady", allPlayersReady);
-    lobby.channel.off("message", channelMessage);
-    unsubscribeTitle();
-  };
+  return () => {};
+  // return () => {
+  //   lobby.off("matchFinished", matchFinished);
+  //   lobby.off("matchAborted", () => matchAborted);
+  //   lobby.off("allPlayersReady", allPlayersReady);
+  //   lobby.channel.off("message", channelMessage);
+  //   unsubscribeTitle();
+  //   unsubscribeStars();
+  // };
 };
