@@ -1,9 +1,10 @@
-import { BanchoClient } from "bancho.js";
+import { BanchoClient, BanchoLobby } from "bancho.js";
 import { readFileSync } from "fs";
 import * as Nodesu from "nodesu";
 
 const credentials = JSON.parse(readFileSync("./auth.json", "utf-8"));
 
+export const lobbies: { [key: string]: BanchoLobby } = {};
 export const api = new Nodesu.Client(credentials.apiV1Key, { parseData: true });
 export const client = new BanchoClient({
   username: credentials.username,

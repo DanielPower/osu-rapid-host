@@ -1,10 +1,11 @@
 import type { BanchoLobby, BanchoMessage } from "bancho.js";
-import { randomUUID } from "crypto";
 import store from "./store";
 import shallow from "zustand/shallow";
-import { api } from "./services";
+import { api, lobbies } from "./global";
 import type { Beatmap } from "nodesu";
+import { WinCondition } from "./types";
 import { writeFileSync } from "fs";
+import { randomUUID } from "crypto";
 
 export const splitWhitespace = (str: string) => str.split(/\s+/);
 
@@ -41,8 +42,9 @@ export const asyncTimer = (value: number) =>
   new Promise((resolve) => setTimeout(resolve, value));
 
 export const setRandomBeatmap = async (uuid: string) => {
+  const lobby = lobbies[uuid];
   const { beatmaps } = store.getState();
-  const { lobby, minStars, maxStars } = store.getState().lobbies[uuid];
+  const { minStars, maxStars } = store.getState().lobbies[uuid];
   const lobbyBeatmaps = beatmaps.filter(
     (beatmap) =>
       beatmap.difficultyRating > minStars && beatmap.difficultyRating < maxStars
@@ -56,30 +58,27 @@ export const setRandomBeatmap = async (uuid: string) => {
 };
 
 export const queueMap = async (uuid: string) => {
-  const lobby = store.getState().lobbies[uuid];
+  const lobby = lobbies[uuid];
   await setRandomBeatmap(uuid);
-  await lobby.lobby.channel.sendMessage("Map will start in 90 seconds");
+  await lobby.channel.sendMessage("Map will start in 90 seconds");
   await asyncTimer(60000);
-  await lobby.lobby.channel.sendMessage("Map will start in 30 seconds");
+  await lobby.channel.sendMessage("Map will start in 30 seconds");
   await asyncTimer(20000);
-  await lobby.lobby.channel.sendMessage("Map will start in 10 seconds");
+  await lobby.channel.sendMessage("Map will start in 10 seconds");
   await asyncTimer(10000);
-  await lobby.lobby.startMatch();
+  await lobby.startMatch();
 };
 
-export const manageLobby = async (lobby: BanchoLobby): Promise<void> => {
+export const manageLobby = async (lobby: BanchoLobby): Promise<() => void> => {
   const uuid = randomUUID();
-  store.setState((state) => ({
-    ...state,
-    lobbies: {
-      ...state.lobbies,
-      [uuid]: {
-        lobby,
-        minStars: 3,
-        maxStars: 5,
-      },
-    },
-  }));
+  lobbies[uuid] = lobby;
+  store.getState().createLobby(uuid, {
+    slots: lobby.slots,
+    winCondition: lobby.winCondition,
+    minStars: 3,
+    maxStars: 5,
+    skipRequests: 0,
+  });
 
   const matchFinished = () => queueMap(uuid);
   const matchAborted = () => queueMap(uuid);
@@ -90,17 +89,31 @@ export const manageLobby = async (lobby: BanchoLobby): Promise<void> => {
       message.user.sendMessage(message.message.slice(6));
     }
   };
+  const winCondition = (winCondition: WinCondition) => {
+    store.getState().updateLobbyWinCondition(uuid, winCondition);
+  };
 
   lobby.on("matchFinished", matchFinished);
   lobby.on("matchAborted", () => matchAborted);
   lobby.on("allPlayersReady", allPlayersReady);
+  lobby.on("winCondition", winCondition);
   lobby.channel.on("message", channelMessage);
 
-  store.subscribe(
-    (state) => [state.lobbies[uuid].minStars, state.lobbies[uuid].maxStars],
-    ([minStars, maxStars]) => {
+  const unsubscribeTitle = store.subscribe(
+    (state) => ({
+      minStars: state.lobbies[uuid].minStars,
+      maxStars: state.lobbies[uuid].maxStars,
+      winCondition: state.lobbies[uuid].winCondition,
+    }),
+    ({ minStars, maxStars, winCondition }) => {
+      const winConditionLabel = {
+        [WinCondition.ScoreV1]: "SV1",
+        [WinCondition.ScoreV2]: "SV2",
+        [WinCondition.Combo]: "Combo",
+        [WinCondition.Accuracy]: "Acc",
+      }[winCondition];
       lobby.channel.sendMessage(
-        `!mp name (BETA) Rapid Host | ${minStars}-${maxStars}* | V1 | FM`
+        `!mp name (BETA) Rapid Host | ${minStars}-${maxStars}* | ${winConditionLabel} | FM`
       );
     },
     { equalityFn: shallow, fireImmediately: true }
@@ -108,4 +121,12 @@ export const manageLobby = async (lobby: BanchoLobby): Promise<void> => {
 
   await lobby.clearHost();
   await queueMap(uuid);
+
+  return () => {
+    lobby.off("matchFinished", matchFinished);
+    lobby.off("matchAborted", () => matchAborted);
+    lobby.off("allPlayersReady", allPlayersReady);
+    lobby.channel.off("message", channelMessage);
+    unsubscribeTitle();
+  };
 };

@@ -5,7 +5,7 @@ import {
   fallbackMessage,
   hostMessage,
 } from "./message_handlers";
-import { client } from "./services";
+import { client } from "./global";
 
 client
   .connect()

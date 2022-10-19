@@ -1,5 +1,5 @@
 import type { BanchoMessage, BanchoMultiplayerChannel } from "bancho.js";
-import { client } from "./services";
+import { client } from "./global";
 import {
   addBeatmap,
   manageLobby,
@@ -65,15 +65,14 @@ export const hostMessage: MessageHandler<null> = {
       channelName = `#mp_${parseInt(components[1], 10)}`;
     } catch {
       await message.user.sendMessage("Invalid arguments for !host.");
-      await message.user.sendMessage(
-        "Usage: !host <room_id> <min_stars> <max_stars>"
-      );
-      await message.user.sendMessage("Example: !host 104507018 5 6.5");
+      await message.user.sendMessage("Usage: !host <room_id>");
+      await message.user.sendMessage("Example: !host 104507018");
       return;
     }
     await message.user.sendMessage("Taking control!");
     const channel = client.getChannel(channelName) as BanchoMultiplayerChannel;
     await channel.join();
+    await channel.lobby.updateSettings();
     await manageLobby(channel.lobby);
   },
 };
