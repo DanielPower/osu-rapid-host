@@ -1,16 +1,8 @@
-import type {
-  BanchoMessage,
-  BanchoMultiplayerChannel,
-} from "bancho.js";
-import { client } from "./global";
-import {
-  addBeatmap,
-  manageLobby,
-  parseBeatmapMessage,
-  splitWhitespace,
-} from "./utilities";
+import type { BanchoMessage, BanchoMultiplayerChannel } from "bancho.js";
+import { client } from "./global.js";
+import { manageLobby, splitWhitespace } from "./utilities.js";
 import { ok } from "assert";
-import store from "./store";
+import store from "./store.js";
 
 type MessageHandler<V> = {
   trigger: (message: BanchoMessage) => [true, V] | [false, null];
@@ -25,24 +17,6 @@ export const echoMessage: MessageHandler<string> = {
     return [false, null];
   },
   effect: (message, string) => message.user.sendMessage(string),
-};
-
-export const addBeatmapMessage: MessageHandler<number> = {
-  trigger: (message) => {
-    const beatmapId = parseBeatmapMessage(message.message);
-    if ((typeof beatmapId === "number") == !Number.isNaN(beatmapId)) {
-      return [true, beatmapId];
-    }
-    return [false, null];
-  },
-  effect: async (message, beatmapId) => {
-    const beatmapWasAdded = await addBeatmap(beatmapId);
-    if (beatmapWasAdded) {
-      await message.user.sendMessage("The beatmap was added successfully");
-    } else {
-      await message.user.sendMessage("That beatmap was already in the pool");
-    }
-  },
 };
 
 export const aboutMessage: MessageHandler<null> = {

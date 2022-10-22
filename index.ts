@@ -1,11 +1,10 @@
 import {
   aboutMessage,
-  addBeatmapMessage,
   echoMessage,
   fallbackMessage,
   hostMessage,
-} from "./message_handlers";
-import { client } from "./global";
+} from "./message_handlers.js";
+import { client } from "./global.js";
 
 client
   .connect()
@@ -15,7 +14,6 @@ client
       for (const messageHandler of [
         echoMessage,
         aboutMessage,
-        addBeatmapMessage,
         hostMessage,
         fallbackMessage,
       ]) {

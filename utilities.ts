@@ -1,44 +1,13 @@
 import type { BanchoLobby, BanchoMessage } from "bancho.js";
-import store from "./store";
+import store from "./store.js";
 import shallow from "zustand/shallow";
-import { api, lobbies } from "./global";
-import type { Beatmap } from "nodesu";
-import { WinCondition } from "./types";
-import { writeFileSync } from "fs";
+import { lobbies } from "./global.js";
+import { WinCondition } from "./types.js";
 import { randomUUID } from "crypto";
-import { difficultyMessage, echoMessage } from "./message_handlers";
+import { difficultyMessage, echoMessage } from "./message_handlers.js";
 import { Mode } from "nodesu";
 
 export const splitWhitespace = (str: string) => str.split(/\s+/);
-
-export const parseBeatmapMessage = (message: string): number | null => {
-  const result = message.match(/\[.+\/(\d+) /);
-  if (result && result.length === 2) {
-    return parseInt(result[1], 10);
-  }
-  return null;
-};
-
-export const addBeatmap = async (beatmapId: number): Promise<boolean> => {
-  const { beatmaps } = store.getState();
-  const beatmapSetIds = new Set(
-    beatmaps.map((beatmap) => beatmap.beatmapSetId)
-  );
-  const [beatmap] = (await api.beatmaps.getByBeatmapId(beatmapId)) as Beatmap[];
-  if (!beatmapSetIds.has(beatmap.beatmapSetId)) {
-    beatmapSetIds.add(beatmap.beatmapSetId);
-    const beatmapSet = (await api.beatmaps.getBySetId(
-      beatmap[0].beatmapSetId
-    )) as Beatmap[];
-    store.setState((state) => ({
-      ...state,
-      beatmaps: [...beatmaps, ...beatmapSet],
-    }));
-    writeFileSync("beatmaps.json", JSON.stringify(beatmaps), "utf-8");
-    return true;
-  }
-  return false;
-};
 
 export const asyncTimer = (value: number) =>
   new Promise((resolve) => setTimeout(resolve, value));

@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2022",
+    "target": "ES2022",
     "sourceMap": true,
-    "moduleResolution": "node"
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "esModuleInterop": true
   },
   "exclude": ["node_modules"]
 }
