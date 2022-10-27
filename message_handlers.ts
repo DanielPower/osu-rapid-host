@@ -4,37 +4,29 @@ import { manageLobby, splitWhitespace } from "./utilities.js";
 import { ok } from "assert";
 import store from "./store.js";
 
-type MessageHandler<V> = {
-  trigger: (message: BanchoMessage) => [true, V] | [false, null];
-  effect: (message: BanchoMessage, value: V) => Promise<void>;
+type MessageHandler = {
+  trigger: (message: BanchoMessage) => boolean;
+  effect: (message: BanchoMessage) => Promise<void>;
 };
 
-export const echoMessage: MessageHandler<string> = {
-  trigger: (message) => {
-    if (message.message.indexOf("!echo") === 0) {
-      return [true, message.message.slice(6)];
-    }
-    return [false, null];
+export const echoMessage: MessageHandler = {
+  trigger: (message) => message.message.startsWith("!echo "),
+  effect: async (message) => {
+    await message.user.sendMessage(message.message.slice(6));
   },
-  effect: (message, string) => message.user.sendMessage(string),
 };
 
-export const aboutMessage: MessageHandler<null> = {
-  trigger: (message) => [message.message.trimEnd() === "!about", null],
-  effect: (message) =>
-    message.user.sendMessage(
+export const aboutMessage: MessageHandler = {
+  trigger: (message) => message.message.startsWith("!about "),
+  effect: async (message) => {
+    await message.user.sendMessage(
       "(WORK IN PROGRESS) This bot automatically picks maps for you to keep the lobby running quickly."
-    ),
+    );
+  },
 };
 
-export const fallbackMessage: MessageHandler<null> = {
-  trigger: (message) => [message.user.id !== client.getSelf().id, null],
-  effect: (message) =>
-    message.user.sendMessage("I'm sorry, I don't understand that command."),
-};
-
-export const hostMessage: MessageHandler<null> = {
-  trigger: (message) => [message.message.indexOf("!host") === 0, null],
+export const hostMessage: MessageHandler = {
+  trigger: (message) => message.message.startsWith("!host "),
   effect: async (message) => {
     let channelName;
     try {
@@ -54,13 +46,8 @@ export const hostMessage: MessageHandler<null> = {
   },
 };
 
-export const difficultyMessage = (uuid: string): MessageHandler<null> => ({
-  trigger: (message) => {
-    if (message.message.indexOf("!stars") === 0) {
-      return [true, null];
-    }
-    return [false, null];
-  },
+export const difficultyMessage = (uuid: string): MessageHandler => ({
+  trigger: (message) => message.message.startsWith("!stars "),
   effect: async (message) => {
     let minStars, maxStars;
     try {

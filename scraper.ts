@@ -1,5 +1,6 @@
 import { db, api } from "./global.js";
 import { readFileSync, writeFileSync } from "fs";
+import { parseBeatmap } from "./utilities.js";
 
 let beatmapSetId: number = JSON.parse(
   readFileSync("./scrape_state.json", "utf-8")
@@ -17,10 +18,9 @@ while (beatmapSetId < 242575) {
   }
 
   for (const beatmap of beatmaps) {
-    await db.create("beatmap", beatmap);
+    await db.create("beatmap", parseBeatmap(beatmap));
   }
 
   beatmapSetId += 1;
   writeFileSync("./scrape_state.json", JSON.stringify(beatmapSetId));
 }
-
